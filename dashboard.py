@@ -38,6 +38,10 @@ if ejecutar:
 
         data = obtener_datos(ticker, start, end, guardar=False)
 
+        if data.empty:
+            st.error(f"⚠️ No se pudieron descargar datos para '{ticker}'. Esto puede pasar por límites temporales de Yahoo Finance. Intenta de nuevo en unos segundos, o prueba con otro ticker.")
+            st.stop()
+
         if estrategia == "Cruce de Medias Móviles":
             data = agregar_medias_moviles(data, corta=corta, larga=larga)
             data = detectar_cruces(data, corta=f'SMA_{corta}', larga=f'SMA_{larga}')

@@ -2,23 +2,7 @@ import yfinance as yf
 import os
 import pandas as pd
 
-def obtener_datos(ticker, start, end, guardar=True):
-    """
-    Descarga datos históricos de un activo y opcionalmente los guarda en CSV.
-    """
-    data = yf.download(ticker, start=start, end=end)
-    data = data.dropna()
 
-    # Aplanar columnas si vienen con multi-nivel (Close, AAPL) -> Close
-    if isinstance(data.columns, pd.MultiIndex):
-        data.columns = data.columns.get_level_values(0)
-
-    if guardar:
-        os.makedirs('data', exist_ok=True)
-        data.to_csv(f'data/{ticker}_historico.csv')
-        print(f"✅ Datos de {ticker} guardados en data/{ticker}_historico.csv")
-
-    return data
 
 def agregar_medias_moviles(data, corta=20, larga=50):
     """
@@ -188,5 +172,27 @@ def detectar_señales_rsi(data, sobrevendido=30, sobrecomprado=70):
     
     # Venta: RSI cruza por debajo del nivel de sobrecomprado
     data.loc[(data['RSI'] < sobrecomprado) & (data['RSI'].shift(1) >= sobrecomprado), 'Señal'] = -1
+    return data
+
+import time
+
+def obtener_datos(ticker, start, end, guardar=True, reintentos=3):
+    """
+    Descarga datos históricos con reintentos automáticos si falla.
+    """
+    for intento in range(reintentos):
+        data = yf.download(ticker, start=start, end=end)
+        if not data.empty:
+            break
+        time.sleep(2)  # esperar 2 segundos antes de reintentar
     
+    data = data.dropna()
+
+    if isinstance(data.columns, pd.MultiIndex):
+        data.columns = data.columns.get_level_values(0)
+
+    if guardar and not data.empty:
+        os.makedirs('data', exist_ok=True)
+        data.to_csv(f'data/{ticker}_historico.csv')
+        print(f"✅ Datos de {ticker} guardados en data/{ticker}_historico.csv")
     return data
