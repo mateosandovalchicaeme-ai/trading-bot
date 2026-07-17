@@ -110,29 +110,48 @@ def calcular_metricas(data, capital_inicial=10000):
         'mejor_operacion': max(operaciones) if operaciones else 0,
         'peor_operacion': min(operaciones) if operaciones else 0
     }
-
-def probar_estrategia(ticker, start, end, corta=20, larga=50, capital_inicial=10000):
+def probar_estrategia(ticker, start, end, tipo='medias', capital_inicial=10000, **params):
     """
-    Corre el pipeline completo (datos -> medias -> señales -> simulación -> métricas)
-    para un ticker y parámetros dados, y devuelve un resumen.
+    Corre el pipeline completo para un ticker con la estrategia elegida.
+    tipo puede ser: 'medias', 'rsi', 'bollinger'
     """
     data = obtener_datos(ticker, start, end, guardar=False)
-    data = agregar_medias_moviles(data, corta=corta, larga=larga)
-    data = detectar_cruces(data, corta=f'SMA_{corta}', larga=f'SMA_{larga}')
+    
+    if tipo == 'medias':
+        corta = params.get('corta', 20)
+        larga = params.get('larga', 50)
+        data = agregar_medias_moviles(data, corta=corta, larga=larga)
+        data = detectar_cruces(data, corta=f'SMA_{corta}', larga=f'SMA_{larga}')
+        nombre = f'Medias {corta}/{larga}'
+    
+    elif tipo == 'rsi':
+        periodo = params.get('periodo', 14)
+        sobrevendido = params.get('sobrevendido', 30)
+        sobrecomprado = params.get('sobrecomprado', 70)
+        data = agregar_rsi(data, periodo=periodo)
+        data = detectar_señales_rsi(data, sobrevendido=sobrevendido, sobrecomprado=sobrecomprado)
+        nombre = f'RSI {periodo}'
+    
+    elif tipo == 'bollinger':
+        periodo = params.get('periodo', 20)
+        desviaciones = params.get('desviaciones', 2)
+        data = agregar_bollinger(data, periodo=periodo, desviaciones=desviaciones)
+        data = detectar_señales_bollinger(data)
+        nombre = f'Bollinger {periodo}'
+    
     data = simular_estrategia(data, capital_inicial=capital_inicial)
     metricas = calcular_metricas(data, capital_inicial)
     
     capital_final = data['Capital'].iloc[-1]
     retorno_pct = ((capital_final - capital_inicial) / capital_inicial) * 100
     
-    # Comparar contra buy & hold
     acciones_bh = capital_inicial / data['Close'].iloc[0]
     capital_bh = acciones_bh * data['Close'].iloc[-1]
     retorno_bh_pct = ((capital_bh - capital_inicial) / capital_inicial) * 100
     
     return {
+        'estrategia': nombre,
         'ticker': ticker,
-        'medias': f'{corta}/{larga}',
         'retorno_estrategia': round(retorno_pct, 2),
         'retorno_buy_hold': round(retorno_bh_pct, 2),
         'drawdown_maximo': round(metricas['drawdown_maximo'], 2),
@@ -222,4 +241,4 @@ def detectar_señales_bollinger(data):
     data.loc[(data['Close'] < data['BB_Superior']) & 
              (data['Close'].shift(1) >= data['BB_Superior'].shift(1)), 'Señal'] = -1
     
-    return data
+    return data 

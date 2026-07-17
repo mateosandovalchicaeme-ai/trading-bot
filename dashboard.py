@@ -1,7 +1,8 @@
 import streamlit as st
 import matplotlib.pyplot as plt
 from utils import (obtener_datos, agregar_medias_moviles, detectar_cruces,
-                    agregar_rsi, detectar_señales_rsi, simular_estrategia, calcular_metricas)
+                    agregar_rsi, detectar_señales_rsi, agregar_bollinger,
+                    detectar_señales_bollinger, simular_estrategia, calcular_metricas)
 
 st.set_page_config(page_title="Trading Bot - Backtesting", layout="wide")
 st.title("📈 Trading Bot: Backtesting de Estrategias")
@@ -17,16 +18,19 @@ capital_inicial = st.sidebar.number_input("Capital inicial (USD)", value=10000, 
 
 estrategia = st.sidebar.selectbox(
     "Estrategia",
-    ["Cruce de Medias Móviles", "RSI"]
+    ["Cruce de Medias Móviles", "RSI", "Bandas de Bollinger"]
 )
 
 if estrategia == "Cruce de Medias Móviles":
     corta = st.sidebar.slider("Media corta", 5, 50, 20)
     larga = st.sidebar.slider("Media larga", 20, 200, 50)
-else:
+elif estrategia == "RSI":
     periodo_rsi = st.sidebar.slider("Periodo RSI", 5, 30, 14)
     sobrevendido = st.sidebar.slider("Nivel sobrevendido", 10, 40, 30)
     sobrecomprado = st.sidebar.slider("Nivel sobrecomprado", 60, 90, 70)
+else:
+    periodo_bb = st.sidebar.slider("Periodo Bollinger", 10, 50, 20)
+    desviaciones_bb = st.sidebar.slider("Desviaciones estándar", 1, 4, 2)
 
 ejecutar = st.sidebar.button("🚀 Correr Backtesting")
 
@@ -45,9 +49,12 @@ if ejecutar:
         if estrategia == "Cruce de Medias Móviles":
             data = agregar_medias_moviles(data, corta=corta, larga=larga)
             data = detectar_cruces(data, corta=f'SMA_{corta}', larga=f'SMA_{larga}')
-        else:
+        elif estrategia == "RSI":
             data = agregar_rsi(data, periodo=periodo_rsi)
             data = detectar_señales_rsi(data, sobrevendido=sobrevendido, sobrecomprado=sobrecomprado)
+        else:
+            data = agregar_bollinger(data, periodo=periodo_bb, desviaciones=desviaciones_bb)
+            data = detectar_señales_bollinger(data)
 
         data = simular_estrategia(data, capital_inicial=capital_inicial)
         metricas = calcular_metricas(data, capital_inicial)
