@@ -196,3 +196,30 @@ def obtener_datos(ticker, start, end, guardar=True, reintentos=3):
         data.to_csv(f'data/{ticker}_historico.csv')
         print(f"✅ Datos de {ticker} guardados en data/{ticker}_historico.csv")
     return data
+def agregar_bollinger(data, periodo=20, desviaciones=2):
+    """
+    Calcula las Bandas de Bollinger y las agrega como columnas.
+    """
+    data = data.copy()
+    data['BB_Media'] = data['Close'].rolling(window=periodo).mean()
+    desv_std = data['Close'].rolling(window=periodo).std()
+    data['BB_Superior'] = data['BB_Media'] + (desv_std * desviaciones)
+    data['BB_Inferior'] = data['BB_Media'] - (desv_std * desviaciones)
+    return data
+
+
+def detectar_señales_bollinger(data):
+    """
+    Genera señal de compra cuando el precio cruza hacia arriba la banda inferior
+    (rebote desde zona barata), y señal de venta cuando cruza hacia abajo la banda superior.
+    """
+    data = data.copy()
+    data['Señal'] = 0
+    
+    data.loc[(data['Close'] > data['BB_Inferior']) & 
+             (data['Close'].shift(1) <= data['BB_Inferior'].shift(1)), 'Señal'] = 1
+    
+    data.loc[(data['Close'] < data['BB_Superior']) & 
+             (data['Close'].shift(1) >= data['BB_Superior'].shift(1)), 'Señal'] = -1
+    
+    return data
