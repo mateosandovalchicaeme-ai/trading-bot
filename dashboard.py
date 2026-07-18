@@ -2,7 +2,8 @@ import streamlit as st
 import matplotlib.pyplot as plt
 from utils import (obtener_datos, agregar_medias_moviles, detectar_cruces,
                     agregar_rsi, detectar_señales_rsi, agregar_bollinger,
-                    detectar_señales_bollinger, simular_estrategia, calcular_metricas)
+                    detectar_señales_bollinger, simular_estrategia, calcular_metricas,
+                    calcular_metricas_avanzadas)
 
 st.set_page_config(page_title="Trading Bot - Backtesting", layout="wide")
 st.title("📈 Trading Bot: Backtesting de Estrategias")
@@ -67,6 +68,7 @@ if ejecutar:
         data = simular_estrategia(data, capital_inicial=capital_inicial, comision_pct=comision, 
                                     slippage_pct=slippage, stop_loss_pct=stop_loss, take_profit_pct=take_profit)
         metricas = calcular_metricas(data, capital_inicial)
+        metricas_avanzadas = calcular_metricas_avanzadas(data, capital_inicial)
         data = simular_estrategia(data, capital_inicial=capital_inicial, comision_pct=comision, slippage_pct=slippage)
 
         capital_final = data['Capital'].iloc[-1]
@@ -84,6 +86,18 @@ if ejecutar:
     col4.metric("Win rate", f"{metricas['win_rate']:.2f}%")
 
     st.write(f"🔄 Número de operaciones: **{metricas['num_operaciones']}**")
+    st.subheader("📐 Métricas de riesgo ajustado")
+    col5, col6, col7 = st.columns(3)
+    col5.metric("Sharpe Ratio", f"{metricas_avanzadas['sharpe_ratio']:.2f}")
+    col6.metric("Sortino Ratio", f"{metricas_avanzadas['sortino_ratio']:.2f}")
+    col7.metric("Calmar Ratio", f"{metricas_avanzadas['calmar_ratio']:.2f}")
+    
+    with st.expander("ℹ️ ¿Qué significan estas métricas?"):
+        st.write("""
+        - **Sharpe Ratio**: retorno por unidad de riesgo total. >1 es bueno, >2 es excelente.
+        - **Sortino Ratio**: como el Sharpe, pero solo penaliza caídas (no subidas fuertes).
+        - **Calmar Ratio**: retorno anualizado dividido entre la peor caída sufrida.
+        """)
 
     # --- Gráfico de precio ---
     compras = data[data['Señal'] == 1]
