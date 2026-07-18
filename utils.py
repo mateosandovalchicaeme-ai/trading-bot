@@ -33,14 +33,12 @@ def detectar_cruces(data, corta='SMA_20', larga='SMA_50'):
     data.loc[(data['Diferencia'] < 0) & (data['Diferencia'].shift(1) >= 0), 'Señal'] = -1
     return data
 
-def simular_estrategia(data, capital_inicial=10000):
+def simular_estrategia(data, capital_inicial=10000, comision_pct=0.1, slippage_pct=0.05):
     """
-    Simula seguir las señales de compra/venta y calcula el capital resultante.
+    Simula seguir las señales de compra/venta, descontando comisión y slippage.
     
-    Lógica simple: 
-    - Cuando hay señal de compra (1), invierte todo el capital disponible
-    - Cuando hay señal de venta (-1), vende toda la posición
-    - Si no hay señal, mantiene la posición actual
+    comision_pct: % que cobra el bróker por operación (default 0.1%)
+    slippage_pct: % de diferencia entre precio esperado y precio real (default 0.05%)
     """
     data = data.copy()
     
@@ -48,24 +46,24 @@ def simular_estrategia(data, capital_inicial=10000):
     acciones = 0
     en_posicion = False
     historial_capital = []
+    costo_total = comision_pct / 100 + slippage_pct / 100
     
     for i, row in data.iterrows():
         precio = row['Close']
         señal = row['Señal']
         
         if señal == 1 and not en_posicion:
-            # Comprar: convertir todo el capital en acciones
-            acciones = capital / precio
+            precio_ejecucion = precio * (1 + costo_total)  # pagas un poco más al comprar
+            acciones = capital / precio_ejecucion
             capital = 0
             en_posicion = True
         
         elif señal == -1 and en_posicion:
-            # Vender: convertir todas las acciones en capital
-            capital = acciones * precio
+            precio_ejecucion = precio * (1 - costo_total)  # recibes un poco menos al vender
+            capital = acciones * precio_ejecucion
             acciones = 0
             en_posicion = False
         
-        # Calcular el valor total actual (efectivo + acciones)
         valor_total = capital + (acciones * precio)
         historial_capital.append(valor_total)
     

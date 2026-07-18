@@ -33,7 +33,9 @@ else:
     desviaciones_bb = st.sidebar.slider("Desviaciones estándar", 1, 4, 2)
 
 ejecutar = st.sidebar.button("🚀 Correr Backtesting")
-
+st.sidebar.subheader("Costos de transacción")
+comision = st.sidebar.slider("Comisión (%)", 0.0, 1.0, 0.1, step=0.05)
+slippage = st.sidebar.slider("Slippage (%)", 0.0, 1.0, 0.05, step=0.05)
 # --- Ejecutar backtesting ---
 if ejecutar:
     with st.spinner("Descargando datos y calculando..."):
@@ -58,6 +60,7 @@ if ejecutar:
 
         data = simular_estrategia(data, capital_inicial=capital_inicial)
         metricas = calcular_metricas(data, capital_inicial)
+        data = simular_estrategia(data, capital_inicial=capital_inicial, comision_pct=comision, slippage_pct=slippage)
 
         capital_final = data['Capital'].iloc[-1]
         retorno_pct = ((capital_final - capital_inicial) / capital_inicial) * 100
