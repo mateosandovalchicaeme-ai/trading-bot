@@ -21,7 +21,7 @@ jobs:
 
       - name: Instalar dependencias
         run: |
-          pip install pytest pandas numpy
+          pip install pytest pandas numpy yfinance
           
       - name: Correr tests
         run: |
