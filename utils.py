@@ -139,7 +139,16 @@ def probar_estrategia(ticker, start, end, tipo='medias', capital_inicial=10000, 
     tipo puede ser: 'medias', 'rsi', 'bollinger'
     """
     data = obtener_datos(ticker, start, end, guardar=False)
-    
+    if data.empty:
+     return {
+        'estrategia': tipo,
+        'ticker': ticker,
+        'retorno_estrategia': None,
+        'retorno_buy_hold': None,
+        'drawdown_maximo': None,
+        'num_operaciones': 0,
+        'win_rate': None
+    }
     if tipo == 'medias':
         corta = params.get('corta', 20)
         larga = params.get('larga', 50)
@@ -358,13 +367,23 @@ def simulacion_monte_carlo(data, capital_inicial=10000, num_simulaciones=500):
         'probabilidad_perdida': round((retornos_pct < 0).mean() * 100, 2),
         'todos_los_resultados': retornos_pct
     }
+import time
+
 def comparar_multiples_activos(tickers, start, end, tipo='medias', capital_inicial=10000, **params):
-    """
-    Corre la misma estrategia sobre una lista de tickers y devuelve
-    una tabla comparativa, ademas de los datos individuales de cada uno.
-    """
     resultados = []
     datos_por_ticker = {}
+    
+    for i, ticker in enumerate(tickers):
+        if i > 0:
+            time.sleep(1.5)  # pausa entre cada descarga para no saturar a Yahoo
+        
+        try:
+            resultado = probar_estrategia(ticker, start, end, tipo=tipo, 
+                                            capital_inicial=capital_inicial, **params)
+            resultados.append(resultado)
+        except Exception as e:
+            print(f"⚠️ Error con {ticker}: {e}")
+            continue
     
     for ticker in tickers:
         try:

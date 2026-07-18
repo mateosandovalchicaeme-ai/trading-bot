@@ -137,6 +137,8 @@ comparar_btn = st.button("📈 Comparar Portafolio")
 
 if comparar_btn:
     with st.spinner("Analizando múltiples activos..."):
+        start = fecha_inicio.strftime("%Y-%m-%d") if fecha_inicio else "2020-01-01"
+        end = fecha_fin.strftime("%Y-%m-%d") if fecha_fin else "2024-12-31"
         lista_tickers = [t.strip().upper() for t in tickers_input.split(",") if t.strip()]
         
         if estrategia == "Cruce de Medias Móviles":
