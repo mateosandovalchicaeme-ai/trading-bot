@@ -293,3 +293,41 @@ def grid_search_medias(ticker, start, end, rango_corta, rango_larga, capital_ini
     tabla = pd.DataFrame(resultados)
     tabla = tabla.sort_values('retorno_estrategia', ascending=False)
     return tabla
+import numpy as np
+
+def calcular_metricas_avanzadas(data, capital_inicial=10000, dias_por_año=252):
+    """
+    Calcula Sharpe Ratio, Sortino Ratio y Calmar Ratio.
+    dias_por_año: 252 es el estándar para mercados de acciones (días hábiles)
+    """
+    capital = data['Capital']
+    retornos_diarios = capital.pct_change().dropna()
+    
+    # Sharpe Ratio (asumiendo tasa libre de riesgo = 0 para simplificar)
+    retorno_promedio = retornos_diarios.mean()
+    volatilidad = retornos_diarios.std()
+    sharpe = (retorno_promedio / volatilidad) * np.sqrt(dias_por_año) if volatilidad != 0 else 0
+    
+    # Sortino Ratio (solo penaliza volatilidad negativa)
+    retornos_negativos = retornos_diarios[retornos_diarios < 0]
+    downside_std = retornos_negativos.std() if len(retornos_negativos) > 0 else 0
+    sortino = (retorno_promedio / downside_std) * np.sqrt(dias_por_año) if downside_std != 0 else 0
+    
+    # Calmar Ratio
+    retorno_total = (capital.iloc[-1] - capital_inicial) / capital_inicial
+    años = len(data) / dias_por_año
+    retorno_anualizado = (1 + retorno_total) ** (1 / años) - 1 if años > 0 else 0
+    
+    maximo_acumulado = capital.cummax()
+    drawdown = (capital - maximo_acumulado) / maximo_acumulado
+    drawdown_maximo = abs(drawdown.min())
+    
+    calmar = retorno_anualizado / drawdown_maximo if drawdown_maximo != 0 else 0
+    
+    return {
+        'sharpe_ratio': round(sharpe, 3),
+        'sortino_ratio': round(sortino, 3),
+        'calmar_ratio': round(calmar, 3),
+        'retorno_anualizado_pct': round(retorno_anualizado * 100, 2),
+        'volatilidad_anualizada_pct': round(volatilidad * np.sqrt(dias_por_año) * 100, 2)
+    }
