@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from utils import (obtener_datos, agregar_medias_moviles, detectar_cruces,
                     agregar_rsi, detectar_señales_rsi, agregar_bollinger,
                     detectar_señales_bollinger, simular_estrategia, calcular_metricas,
-                    calcular_metricas_avanzadas)
+                    calcular_metricas_avanzadas, comparar_multiples_activos, probar_estrategia)
 
 st.set_page_config(page_title="Trading Bot - Backtesting", layout="wide")
 st.title("📈 Trading Bot: Backtesting de Estrategias")
@@ -123,3 +123,60 @@ if ejecutar:
 
 else:
     st.info("Configura los parámetros en la barra lateral y presiona 'Correr Backtesting'.")
+    # --- Sección: Comparación Multi-Activo ---
+st.divider()
+st.header("📊 Comparación de Portafolio")
+st.write("Compara la misma estrategia aplicada a varios activos a la vez.")
+
+tickers_input = st.text_input(
+    "Tickers separados por coma (ej: AAPL, MSFT, GOOGL, TSLA)", 
+    value="AAPL, MSFT, GOOGL, TSLA"
+)
+
+comparar_btn = st.button("📈 Comparar Portafolio")
+
+if comparar_btn:
+    with st.spinner("Analizando múltiples activos..."):
+        lista_tickers = [t.strip().upper() for t in tickers_input.split(",") if t.strip()]
+        
+        if estrategia == "Cruce de Medias Móviles":
+            tabla_comp, datos_comp = comparar_multiples_activos(
+                lista_tickers, start, end, tipo='medias', 
+                capital_inicial=capital_inicial, corta=corta, larga=larga
+            )
+        elif estrategia == "RSI":
+            tabla_comp, datos_comp = comparar_multiples_activos(
+                lista_tickers, start, end, tipo='rsi',
+                capital_inicial=capital_inicial, periodo=periodo_rsi
+            )
+        else:
+            tabla_comp, datos_comp = comparar_multiples_activos(
+                lista_tickers, start, end, tipo='bollinger',
+                capital_inicial=capital_inicial, periodo=periodo_bb
+            )
+    
+    if len(tabla_comp) > 0:
+        st.subheader("Resultados por activo")
+        st.dataframe(
+            tabla_comp[['ticker', 'retorno_estrategia', 'retorno_buy_hold', 
+                        'drawdown_maximo', 'num_operaciones', 'win_rate']],
+            use_container_width=True
+        )
+        
+        mejor_activo = tabla_comp.iloc[0]
+        st.success(f"🏆 Mejor activo: **{mejor_activo['ticker']}** con {mejor_activo['retorno_estrategia']:.2f}% de retorno")
+        
+        # Gráfico comparativo de capital normalizado
+        fig3, ax3 = plt.subplots(figsize=(12, 6))
+        for ticker, data_t in datos_comp.items():
+            capital_norm = (data_t['Capital'] / capital_inicial) * 100
+            ax3.plot(data_t.index, capital_norm, label=ticker)
+        
+        ax3.axhline(y=100, color='gray', linestyle='--', alpha=0.5)
+        ax3.set_title("Evolución del capital por activo (base 100)")
+        ax3.set_ylabel("Capital (base 100)")
+        ax3.legend()
+        ax3.grid(True, alpha=0.3)
+        st.pyplot(fig3)
+    else:
+        st.error("No se pudieron obtener resultados para ningún ticker. Verifica los símbolos ingresados.")

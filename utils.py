@@ -358,3 +358,40 @@ def simulacion_monte_carlo(data, capital_inicial=10000, num_simulaciones=500):
         'probabilidad_perdida': round((retornos_pct < 0).mean() * 100, 2),
         'todos_los_resultados': retornos_pct
     }
+def comparar_multiples_activos(tickers, start, end, tipo='medias', capital_inicial=10000, **params):
+    """
+    Corre la misma estrategia sobre una lista de tickers y devuelve
+    una tabla comparativa, ademas de los datos individuales de cada uno.
+    """
+    resultados = []
+    datos_por_ticker = {}
+    
+    for ticker in tickers:
+        try:
+            resultado = probar_estrategia(ticker, start, end, tipo=tipo, 
+                                            capital_inicial=capital_inicial, **params)
+            resultados.append(resultado)
+            
+            # Guardar los datos completos también, por si se quieren graficar
+            data = obtener_datos(ticker, start, end, guardar=False)
+            if tipo == 'medias':
+                data = agregar_medias_moviles(data, corta=params.get('corta', 20), larga=params.get('larga', 50))
+                data = detectar_cruces(data, corta=f"SMA_{params.get('corta', 20)}", larga=f"SMA_{params.get('larga', 50)}")
+            elif tipo == 'rsi':
+                data = agregar_rsi(data, periodo=params.get('periodo', 14))
+                data = detectar_señales_rsi(data)
+            elif tipo == 'bollinger':
+                data = agregar_bollinger(data, periodo=params.get('periodo', 20))
+                data = detectar_señales_bollinger(data)
+            
+            data = simular_estrategia(data, capital_inicial=capital_inicial)
+            datos_por_ticker[ticker] = data
+            
+        except Exception as e:
+            print(f"⚠️ Error con {ticker}: {e}")
+            continue
+    
+    tabla = pd.DataFrame(resultados)
+    tabla = tabla.sort_values('retorno_estrategia', ascending=False)
+    
+    return tabla, datos_por_ticker
