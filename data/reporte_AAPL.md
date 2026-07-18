@@ -1,6 +1,6 @@
 # 📈 Reporte de Backtesting: AAPL
 
-**Generado:** 2026-07-17 21:18
+**Generado:** 2026-07-17 21:22
 **Período analizado:** 2020-01-01 a 2024-12-31
 **Capital inicial:** $10,000.00
 
