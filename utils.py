@@ -331,3 +331,30 @@ def calcular_metricas_avanzadas(data, capital_inicial=10000, dias_por_año=252):
         'retorno_anualizado_pct': round(retorno_anualizado * 100, 2),
         'volatilidad_anualizada_pct': round(volatilidad * np.sqrt(dias_por_año) * 100, 2)
     }
+def simulacion_monte_carlo(data, capital_inicial=10000, num_simulaciones=500):
+    """
+    Genera múltiples escenarios reordenando aleatoriamente los retornos diarios
+    de la estrategia, para ver el rango de resultados posibles.
+    """
+    retornos_diarios = data['Capital'].pct_change().dropna().values
+    
+    resultados_finales = []
+    
+    for _ in range(num_simulaciones):
+        retornos_mezclados = np.random.choice(retornos_diarios, size=len(retornos_diarios), replace=True)
+        capital = capital_inicial
+        for r in retornos_mezclados:
+            capital = capital * (1 + r)
+        resultados_finales.append(capital)
+    
+    resultados_finales = np.array(resultados_finales)
+    retornos_pct = ((resultados_finales - capital_inicial) / capital_inicial) * 100
+    
+    return {
+        'retorno_promedio': round(np.mean(retornos_pct), 2),
+        'retorno_mediana': round(np.median(retornos_pct), 2),
+        'retorno_percentil_5': round(np.percentile(retornos_pct, 5), 2),
+        'retorno_percentil_95': round(np.percentile(retornos_pct, 95), 2),
+        'probabilidad_perdida': round((retornos_pct < 0).mean() * 100, 2),
+        'todos_los_resultados': retornos_pct
+    }
