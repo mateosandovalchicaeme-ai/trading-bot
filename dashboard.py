@@ -31,6 +31,12 @@ elif estrategia == "RSI":
 else:
     periodo_bb = st.sidebar.slider("Periodo Bollinger", 10, 50, 20)
     desviaciones_bb = st.sidebar.slider("Desviaciones estándar", 1, 4, 2)
+st.sidebar.subheader("Gestión de riesgo")
+usar_stop_loss = st.sidebar.checkbox("Usar Stop-Loss")
+stop_loss = st.sidebar.slider("Stop-Loss (%)", 1, 30, 5) if usar_stop_loss else None
+
+usar_take_profit = st.sidebar.checkbox("Usar Take-Profit")
+take_profit = st.sidebar.slider("Take-Profit (%)", 5, 50, 15) if usar_take_profit else None
 
 ejecutar = st.sidebar.button("🚀 Correr Backtesting")
 st.sidebar.subheader("Costos de transacción")
@@ -58,7 +64,8 @@ if ejecutar:
             data = agregar_bollinger(data, periodo=periodo_bb, desviaciones=desviaciones_bb)
             data = detectar_señales_bollinger(data)
 
-        data = simular_estrategia(data, capital_inicial=capital_inicial)
+        data = simular_estrategia(data, capital_inicial=capital_inicial, comision_pct=comision, 
+                                    slippage_pct=slippage, stop_loss_pct=stop_loss, take_profit_pct=take_profit)
         metricas = calcular_metricas(data, capital_inicial)
         data = simular_estrategia(data, capital_inicial=capital_inicial, comision_pct=comision, slippage_pct=slippage)
 

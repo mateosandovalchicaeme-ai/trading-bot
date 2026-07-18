@@ -33,36 +33,61 @@ def detectar_cruces(data, corta='SMA_20', larga='SMA_50'):
     data.loc[(data['Diferencia'] < 0) & (data['Diferencia'].shift(1) >= 0), 'Señal'] = -1
     return data
 
-def simular_estrategia(data, capital_inicial=10000, comision_pct=0.1, slippage_pct=0.05):
+def simular_estrategia(data, capital_inicial=10000, comision_pct=0.1, slippage_pct=0.05,
+                        stop_loss_pct=None, take_profit_pct=None):
     """
-    Simula seguir las señales de compra/venta, descontando comisión y slippage.
+    Simula seguir las señales de compra/venta, con stop-loss y take-profit opcionales.
     
-    comision_pct: % que cobra el bróker por operación (default 0.1%)
-    slippage_pct: % de diferencia entre precio esperado y precio real (default 0.05%)
+    stop_loss_pct: si se define (ej: 5), vende automáticamente si el precio cae ese % desde la compra
+    take_profit_pct: si se define (ej: 15), vende automáticamente si el precio sube ese % desde la compra
     """
     data = data.copy()
     
     capital = capital_inicial
     acciones = 0
     en_posicion = False
+    precio_compra = None
     historial_capital = []
     costo_total = comision_pct / 100 + slippage_pct / 100
     
     for i, row in data.iterrows():
         precio = row['Close']
         señal = row['Señal']
+        vendido_por_stop = False
         
-        if señal == 1 and not en_posicion:
-            precio_ejecucion = precio * (1 + costo_total)  # pagas un poco más al comprar
-            acciones = capital / precio_ejecucion
-            capital = 0
-            en_posicion = True
+        # Revisar stop-loss / take-profit si estamos en posición
+        if en_posicion and precio_compra is not None:
+            cambio_pct = ((precio - precio_compra) / precio_compra) * 100
+            
+            if stop_loss_pct is not None and cambio_pct <= -stop_loss_pct:
+                precio_ejecucion = precio * (1 - costo_total)
+                capital = acciones * precio_ejecucion
+                acciones = 0
+                en_posicion = False
+                vendido_por_stop = True
+            
+            elif take_profit_pct is not None and cambio_pct >= take_profit_pct:
+                precio_ejecucion = precio * (1 - costo_total)
+                capital = acciones * precio_ejecucion
+                acciones = 0
+                en_posicion = False
+                vendido_por_stop = True
         
-        elif señal == -1 and en_posicion:
-            precio_ejecucion = precio * (1 - costo_total)  # recibes un poco menos al vender
-            capital = acciones * precio_ejecucion
-            acciones = 0
-            en_posicion = False
+        # Señales normales (solo si no se activó stop-loss/take-profit este día)
+        if not vendido_por_stop:
+            if señal == 1 and not en_posicion:
+                precio_ejecucion = precio * (1 + costo_total)
+                acciones = capital / precio_ejecucion
+                capital = 0
+                en_posicion = True
+                precio_compra = precio
+            
+            elif señal == -1 and en_posicion:
+                precio_ejecucion = precio * (1 - costo_total)
+                capital = acciones * precio_ejecucion
+                acciones = 0
+                en_posicion = False
+                precio_compra = None
         
         valor_total = capital + (acciones * precio)
         historial_capital.append(valor_total)
@@ -240,3 +265,31 @@ def detectar_señales_bollinger(data):
              (data['Close'].shift(1) >= data['BB_Superior'].shift(1)), 'Señal'] = -1
     
     return data 
+def grid_search_medias(ticker, start, end, rango_corta, rango_larga, capital_inicial=10000):
+    """
+    Prueba todas las combinaciones de medias corta/larga dentro de los rangos dados,
+    y devuelve los resultados ordenados por retorno.
+    
+    rango_corta, rango_larga: listas de valores a probar, ej: [10, 20, 30]
+    """
+    resultados = []
+    
+    for corta in rango_corta:
+        for larga in rango_larga:
+            if corta >= larga:
+                continue  # la media corta debe ser menor que la larga, si no, no tiene sentido
+            
+            try:
+                resultado = probar_estrategia(ticker, start, end, tipo='medias', 
+                                                corta=corta, larga=larga, 
+                                                capital_inicial=capital_inicial)
+                resultado['corta'] = corta
+                resultado['larga'] = larga
+                resultados.append(resultado)
+            except Exception as e:
+                print(f"Error con corta={corta}, larga={larga}: {e}")
+                continue
+    
+    tabla = pd.DataFrame(resultados)
+    tabla = tabla.sort_values('retorno_estrategia', ascending=False)
+    return tabla
